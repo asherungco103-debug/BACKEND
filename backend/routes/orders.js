@@ -1,80 +1,42 @@
-// backend/routes/orders.js
-const express = require('express');
+import express from 'express';
+import supabase from '../db.js';
 const router = express.Router();
 
-module.exports = (supabase) => {
-  // Place order
-  router.post('/', async (req, res) => {
-    const { user_id, items, payment_method } = req.body;
+// GET /api/orders
+router.get('/', async (req, res) => {
+  const { data, error } = await supabase.from('orders').select('*');
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
 
-    // Calculate total
-    let total = items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
+// POST /api/orders
+router.post('/', async (req, res) => {
+  const { user_id, product_id, quantity, status } = req.body;
+  const { data, error } = await supabase
+    .from('orders')
+    .insert([{ user_id, product_id, quantity, status }]);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Order placed successfully', data });
+});
 
-    // Create order
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert([{ user_id, total, status: 'pending' }])
-      .select()
-      .single();
+// PUT /api/orders/:id
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ status })
+    .eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Order updated successfully', data });
+});
 
-    if (orderError) return res.status(400).json({ error: orderError.message });
+// DELETE /api/orders/:id
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { error } = await supabase.from('orders').delete().eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Order cancelled successfully' });
+});
 
-    // Insert order items
-    for (let item of items) {
-      await supabase
-        .from('order_items')
-        .insert([
-          {
-            order_id: order.id,
-            product_id: item.product_id,
-            quantity: item.quantity,
-            price: item.price,
-          },
-        ]);
-    }
-
-    // Insert payment
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .insert([
-        {
-          order_id: order.id,
-          method: payment_method,
-          amount: total,
-          status: 'completed',
-        },
-      ])
-      .select()
-      .single();
-
-    if (paymentError)
-      return res.status(400).json({ error: paymentError.message });
-
-    // Generate receipt
-    const receipt = {
-      order_id: order.id,
-      user_id,
-      total,
-      payment_method,
-      items,
-    };
-
-    res.json({ order, payment, receipt });
-  });
-
-  // Get user orders
-  router.get('/:user_id', async (req, res) => {
-    const { user_id } = req.params;
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*, order_items(*, products(*)), payments(*)')
-      .eq('user_id', user_id);
-    if (error) return res.status(400).json({ error: error.message });
-    res.json(data);
-  });
-
-  return router;
-};
+export default router;

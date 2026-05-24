@@ -1,56 +1,42 @@
-// backend/routes/merchants.js
-const express = require('express');
+import express from 'express';
+import supabase from '../db.js';
 const router = express.Router();
 
-module.exports = (supabase) => {
-  // Create merchant profile
-  router.post('/', async (req, res) => {
-    const { user_id, shop_name, description, profile_photo } = req.body;
-    const { data, error } = await supabase
-      .from('merchants')
-      .insert([{ user_id, shop_name, description, profile_photo }])
-      .select()
-      .single();
+// GET /api/merchant
+router.get('/', async (req, res) => {
+  const { data, error } = await supabase.from('merchants').select('*');
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
 
-    if (error) return res.status(400).json({ error: error.message });
-    res.json(data);
-  });
+// POST /api/merchant
+router.post('/', async (req, res) => {
+  const { user_id, store_name, description } = req.body;
+  const { data, error } = await supabase
+    .from('merchants')
+    .insert([{ user_id, store_name, description }]);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Merchant profile created', data });
+});
 
-  // Get merchant profile
-  router.get('/:user_id', async (req, res) => {
-    const { user_id } = req.params;
-    const { data, error } = await supabase
-      .from('merchants')
-      .select('*')
-      .eq('user_id', user_id)
-      .single();
+// PUT /api/merchant/:id
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { store_name, description } = req.body;
+  const { data, error } = await supabase
+    .from('merchants')
+    .update({ store_name, description })
+    .eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Merchant updated successfully', data });
+});
 
-    if (error) return res.status(400).json({ error: error.message });
-    res.json(data);
-  });
+// DELETE /api/merchant/:id
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { error } = await supabase.from('merchants').delete().eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Merchant deleted successfully' });
+});
 
-  // Merchant’s products
-  router.get('/:merchant_id/products', async (req, res) => {
-    const { merchant_id } = req.params;
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('seller_id', merchant_id);
-
-    if (error) return res.status(400).json({ error: error.message });
-    res.json(data);
-  });
-
-  // Sales dashboard (basic analytics)
-  router.get('/:merchant_id/dashboard', async (req, res) => {
-    const { merchant_id } = req.params;
-    const { data, error } = await supabase.rpc('merchant_sales_summary', {
-      merchant_id,
-    }); // Supabase function for analytics
-
-    if (error) return res.status(400).json({ error: error.message });
-    res.json(data);
-  });
-
-  return router;
-};
+export default router;

@@ -1,40 +1,42 @@
-// backend/routes/admin.js
-const express = require('express');
+import express from 'express';
+import supabase from '../db.js';
 const router = express.Router();
 
-module.exports = (supabase) => {
-  // Approve merchant
-  router.post('/approve-merchant/:id', async (req, res) => {
-    const { id } = req.params;
-    const { error } = await supabase
-      .from('merchants')
-      .update({ verified: true })
-      .eq('id', id);
-    if (error) return res.status(400).json({ error: error.message });
-    res.json({ message: 'Merchant approved ✅' });
-  });
+// GET /api/admin/users
+router.get('/users', async (req, res) => {
+  const { data, error } = await supabase.from('users').select('*');
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
 
-  // Ban user
-  router.post('/ban-user/:id', async (req, res) => {
-    const { id } = req.params;
-    const { error } = await supabase
-      .from('users')
-      .update({ banned: true })
-      .eq('id', id);
-    if (error) return res.status(400).json({ error: error.message });
-    res.json({ message: 'User banned 🚫' });
-  });
+// PUT /api/admin/ban/:id
+router.put('/ban/:id', async (req, res) => {
+  const { id } = req.params;
+  const { data, error } = await supabase
+    .from('users')
+    .update({ banned: true })
+    .eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'User banned successfully', data });
+});
 
-  // Approve product
-  router.post('/approve-product/:id', async (req, res) => {
-    const { id } = req.params;
-    const { error } = await supabase
-      .from('products')
-      .update({ approved: true })
-      .eq('id', id);
-    if (error) return res.status(400).json({ error: error.message });
-    res.json({ message: 'Product approved ✅' });
-  });
+// PUT /api/admin/approve-product/:id
+router.put('/approve-product/:id', async (req, res) => {
+  const { id } = req.params;
+  const { data, error } = await supabase
+    .from('products')
+    .update({ approved: true })
+    .eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Product approved successfully', data });
+});
 
-  return router;
-};
+// DELETE /api/admin/user/:id
+router.delete('/user/:id', async (req, res) => {
+  const { id } = req.params;
+  const { error } = await supabase.from('users').delete().eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'User deleted successfully' });
+});
+
+export default router;
